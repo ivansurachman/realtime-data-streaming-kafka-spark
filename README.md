@@ -1,5 +1,7 @@
 # Streaming for Data Pipeline — Kafka + Spark Structured Streaming
 
+🇮🇩 Bahasa Indonesia · 🇬🇧 [English](README.en.md)
+
 Pipeline transaksi real-time: producer → Kafka `transactions` → PySpark (validasi, DLQ, watermark, tumbling window) → `transactions_valid` / `transactions_dlq`.
 
 ```
@@ -17,7 +19,8 @@ Kafka, Kafbat UI, dan Spark berjalan di Docker. Producer berjalan di host (Pytho
 ├── docker-compose.yml           # kafka + kafka-init (buat topic) + kafbat-ui + spark
 ├── .env.example                 # template konfigurasi (commit)
 ├── .env                         # konfigurasi lokal (di-gitignore)
-├── README.md
+├── README.md                    # Bahasa Indonesia
+├── README.en.md                 # English
 ├── pytest.ini
 ├── requirements-dev.txt         # dependensi untuk menjalankan tes di host
 ├── producer/
@@ -245,4 +248,4 @@ Late event terdeteksi (`docker compose logs spark | grep late_event`): 4 batch, 
 ![isi DLQ](docs/topics_dlq.png)
 
 ## Link Repo
-<https://github.com/ivansurachman/realtime-data-streaming-kafka-spark>
+<isi link GitHub public di sini>
