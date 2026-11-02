@@ -53,8 +53,11 @@ Kafka, Kafbat UI, dan Spark berjalan di Docker. Producer berjalan di host (Pytho
 
 ## Prasyarat
 - Docker + Docker Compose v2
-- Python 3.10+ (producer dan tes)
+- Python 3.10–3.13 untuk producer. Wheel `confluent-kafka` 2.6.1 tersedia untuk Windows dan Linux (semua versi tsb) serta macOS Apple Silicon (macOS 13+); Mac Intel dengan Python 3.13 belum punya wheel, pakai Python 3.12. Hindari Python 3.14+.
+- Untuk tes: Python 3.10–3.12 (PySpark 3.5 belum mendukung 3.13 secara resmi)
 - Java 11/17 hanya jika menjalankan tes di host
+
+> **Docker atau Podman**: semua perintah `docker compose ...` bisa diganti `podman compose ...` (sudah dicoba dengan Podman + provider docker-compose).
 
 ## Setup Producer (virtual environment)
 ```bash
@@ -178,20 +181,68 @@ Format: `waktu | level | modul | pesan`.
 docker compose logs -f spark | grep "batch="    # ringkasan per batch saja
 ```
 
+### Menyimpan log ke file
+```powershell
+# Windows PowerShell
+mkdir logs
+docker compose logs spark --no-color | Out-File logs\spark.log -Encoding utf8
+python producer/producer.py 2>&1 | Tee-Object logs\producer.log
+```
+```bash
+# Linux / macOS
+mkdir -p logs
+docker compose logs spark --no-color > logs/spark.log
+python producer/producer.py 2>&1 | tee logs/producer.log
+```
+Folder `logs/` sudah di `.gitignore`.
+
 ## Troubleshooting
 | Gejala | Penyebab / solusi |
 |---|---|
 | Producer jalan tapi Spark tidak menampilkan batch | Producer dijalankan sebelum `STREAMING STARTED`. Jalankan ulang producer. |
 | `NoBrokersAvailable` / `Connection refused` di producer | Kafka belum healthy: `docker compose ps`, tunggu status `healthy`. |
 | Spark gagal download jar | Cek internet container; ulangi `docker compose up -d`. |
+| Tabel `running_total` tidak muncul di `logs spark` | Stdout Python ter-buffer. Sudah diperbaiki (`PYTHONUNBUFFERED=1` + flush); jalankan `docker compose up -d --build` agar image baru dipakai. Cari dengan `docker compose logs spark \| grep -A4 running_total`. |
 | Port 8080 terpakai | Ubah `KAFBAT_UI_PORT` di `.env`. |
 | Port 9092 terpakai | Ubah `KAFKA_HOST_PORT` dan `KAFKA_BOOTSTRAP_HOST` di `.env`. |
+| `pip install` gagal build `confluent-kafka` (`WinError 206`, "Failed building wheel") | Versi lama tidak punya wheel untuk Python-mu sehingga pip compile dari source. Pakai versi di `producer/requirements.txt` (2.6.1) dan upgrade pip: `python -m pip install -U pip`. |
 | Compose warning `variable is not set` | `.env` belum dibuat: `cp .env.example .env`. |
 
+## Hasil Uji
+Satu run penuh: 60 event, pipeline bersih (`down -v` sebelum run).
+
+| Komponen | Hasil |
+|---|---|
+| Producer | `delivered=60 failed=0`; 49 valid, 7 invalid (negatif, besar, timestamp, source, duplicate, field hilang, tipe salah), 4 late |
+| Topic `transactions` | 60 pesan |
+| Topic `transactions_valid` | 49 pesan |
+| Topic `transactions_dlq` | 11 pesan = 7 invalid + 4 late (49 + 11 = 60, tidak ada yang hilang) |
+| Late event terdeteksi | 4 batch dengan `reasons={'late_event': 1}`, `late_by_window` = `05:03`, `05:04`, `05:06`, `05:08` (UTC) |
+| `running_total` akhir | 12.875.000 (log `batch=54`) |
+| Window 1 menit | `05:14–05:15` → 23 transaksi, total_amount 6.477.000 |
+
 ## Screenshot
-- Producer: `docs/producer.png`
-- Streaming console: `docs/console.png`
-- Topic valid & DLQ (opsional): `docs/topics.png`
+**Kafka producer** — awal run sampai event ke-43, lalu event ke-20 sampai ringkasan akhir (`delivered=60 failed=0`, jumlah per jenis event).
+
+![producer bagian 1](docs/producer_1.png)
+![producer bagian 2](docs/producer_2.png)
+
+**Streaming console** — output `foreachBatch` dengan kolom wajib `timestamp` (waktu Spark melakukan output) dan `running_total` (kumulatif amount valid), plus `running_count`, `late_in_batch`, `late_total`. Tabel dan baris log berasal dari dua stream (stdout dan stderr), jadi di `logs` bisa tampil berkelompok.
+
+![console running_total](docs/console_running_total.png)
+
+Tabel tumbling window 1 menit (`total_transactions`, `total_amount`) dan ringkasan per batch:
+
+![console streaming](docs/console.png)
+
+Late event terdeteksi (`docker compose logs spark | grep late_event`): 4 batch, masing-masing `reasons={'late_event': 1}` dan `late_by_window`.
+
+![late event terdeteksi](docs/console_late_events.png)
+
+**Topik valid & DLQ (Kafbat UI)** — jumlah pesan per topic, dan isi DLQ dengan `error_reason`.
+
+![daftar topic](docs/topics.png)
+![isi DLQ](docs/topics_dlq.png)
 
 ## Link Repo
 <isi link GitHub public di sini>

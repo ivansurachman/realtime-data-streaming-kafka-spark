@@ -1,5 +1,8 @@
 FROM python:3.11-slim-bookworm
 
+# stdout tanpa buffer: tabel running_total (print Python) tampil langsung di `logs`
+ENV PYTHONUNBUFFERED=1
+
 RUN apt-get update \
  && apt-get install -y --no-install-recommends openjdk-17-jre-headless \
  && rm -rf /var/lib/apt/lists/*

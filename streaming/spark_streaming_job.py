@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import tempfile
 import time
 from dataclasses import dataclass
@@ -92,6 +93,7 @@ def show_running_total(spark: SparkSession, state: PipelineState, late_in_batch:
              F.col("running_total").cast("decimal(20,2)").alias("running_total"),
              "running_count", "late_in_batch", "late_total")
      .show(truncate=False))
+    sys.stdout.flush()  # show() = print Python; tanpa flush tertahan buffer saat tanpa TTY
 
 
 def _process(df: DataFrame, batch_id: int, cfg: Settings, state: PipelineState) -> None:

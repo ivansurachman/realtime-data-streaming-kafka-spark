@@ -8,3 +8,4 @@ ckpt_*/
 spark-warehouse/
 metastore_db/
 derby.log
+logs/
