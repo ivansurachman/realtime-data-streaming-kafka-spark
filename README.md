@@ -248,4 +248,4 @@ Late event terdeteksi (`docker compose logs spark | grep late_event`): 4 batch, 
 ![isi DLQ](docs/topics_dlq.png)
 
 ## Link Repo
-<isi link GitHub public di sini>
+<https://github.com/ivansurachman/realtime-data-streaming-kafka-spark>
